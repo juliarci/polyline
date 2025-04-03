@@ -25,6 +25,43 @@ const polylineMachine = createMachine(
         initial: "idle",
         states : {
             idle: {
+                on: {
+                    MOUSECLICK: {
+                        target: "drawingLine",
+                        actions: "createLine",
+                    },
+                },
+            }
+            ,
+            drawingLine: {
+                on: {
+                    MOUSEMOVE: {
+                        actions: "setLastPoint",
+                    },
+                    MOUSECLICK: [
+                        {
+                            guard: "pasPlein",
+                            actions: "addPoint",
+                        },
+                    ],
+                    BACKSPACE: [
+                        {
+                            guard: "plusDeDeuxPoints",
+                            actions: "removeLastPoint",
+                        },
+                    ],
+                    Enter: [
+                        {
+                            guard: "canSave",
+                            target: "idle",
+                            actions: "saveLine",
+                        },
+                    ],
+                    Escape: {
+                        target: "idle",
+                        actions: "abandon",
+                    },
+                },
             },
         },
     },
@@ -70,6 +107,10 @@ const polylineMachine = createMachine(
                 const newPoints = [...currentPoints, pos.x, pos.y]; // Add the new point to the array
                 polyline.points(newPoints); // Set the updated points to the line
                 temporaire.batchDraw(); // Redraw the layer to reflect the changes
+                const pointCount = newPoints.length / 2; // Chaque point a deux coordonnées
+                if (pointCount === MAX_POINTS) {
+                    actor.send({ type: "Enter" });
+                }
             },
             // Abandonner le tracé de la polyline
             abandon: (context, event) => {
@@ -95,6 +136,10 @@ const polylineMachine = createMachine(
                 // Deux coordonnées pour chaque point, plus le point provisoire
                 return polyline.points().length > 6;
             },
+            canSave: (context, event) => {
+                const pointCount = polyline.points().length / 2;
+                return pointCount >= 2 && pointCount <= MAX_POINTS;
+            },
         },
     }
 );
@@ -116,3 +161,4 @@ window.addEventListener("keydown", (event) => {
     console.log("Key pressed:", event.key);
     actor.send({type: event.key});
 });
+
